@@ -29,8 +29,11 @@ jobs:
           python -m pip install dist/*.whl
           python - <<'PY'
           import importlib.metadata
+          import pathlib
+          import tomllib
           from super_market import SuperMarketAPI, AsyncSuperMarketAPI
-          assert importlib.metadata.version('super-market') == '0.1.0' or importlib.metadata.version('super-market')
+          expected = tomllib.loads(pathlib.Path('pyproject.toml').read_text())['project']['version']
+          assert importlib.metadata.version('super-market') == expected
           print('SDK import and wheel installation successful; no API requests sent')
           PY
       # Do NOT execute tests/smoke-test.py in CI. It calls every API operation,
