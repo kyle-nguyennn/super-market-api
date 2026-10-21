@@ -165,3 +165,18 @@ Generated clients support request timeouts and retry temporary failures such as 
 - Python 3.9 or newer
 
 Powered by Scalar.
+
+## Package publishing
+
+This is a **Scalar-generated** Python SDK. The PyPI distribution is
+`super-market` (imported as `super_market`). Publishing is managed through
+GitHub Actions with OIDC Trusted Publishing, not a stored PyPI token.
+
+See [Publishing and release instructions](docs/PUBLISHING.md) for
+one-time PyPI registration and version-tagged releases.
+
+> **Trading safety:** This client defaults to automatic request retries.
+> For SIG order placement/cancellation use `max_retries=0` and implement
+> durable idempotency, unknown-order reconciliation and pretrade risk in
+> the calling application. Do not run `tests/smoke-test.py` against
+> a real participant account: it includes order-creating endpoints.
