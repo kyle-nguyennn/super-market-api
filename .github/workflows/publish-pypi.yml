@@ -4,6 +4,16 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Existing immutable tag to publish (e.g. v0.1.0)"
+        required: true
+        type: string
+
+concurrency:
+  group: pypi-release-${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref_name }}
+  cancel-in-progress: false
 
 permissions:
   contents: read
@@ -15,16 +25,23 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          # On manual retry, build the original release tag, not current main.
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref }}
           fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
       - name: Require mainline commit and exact version tag
         env:
-          RELEASE_TAG: ${{ github.ref_name }}
+          RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref_name }}
         run: |
-          git fetch origin main
-          git merge-base --is-ancestor "$GITHUB_SHA" origin/main
+          # Reject misspelled tags, tags not checked out and non-main commits.
+          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || exit 1
+          git fetch origin main --tags
+          tag_commit="$(git rev-parse "refs/tags/$RELEASE_TAG^{commit}")"
+          checked_out_commit="$(git rev-parse HEAD)"
+          test "$tag_commit" = "$checked_out_commit"
+          git merge-base --is-ancestor "$checked_out_commit" origin/main
           python - <<'PY'
           import os, re, pathlib, tomllib
           tag = os.environ['RELEASE_TAG']
@@ -60,10 +77,10 @@ jobs:
     name: Publish verified distributions
     needs: build
     runs-on: ubuntu-latest
-    environment:
-      name: pypi
-      url: https://pypi.org/p/super-market
+    # Environment-free OIDC fallback for private-repo deployment restrictions.
+    # PyPI Trusted Publisher must NOT specify a GitHub environment.
     permissions:
+      contents: read
       id-token: write
     steps:
       - uses: actions/download-artifact@v4
