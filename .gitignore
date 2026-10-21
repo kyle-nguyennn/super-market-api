@@ -8,3 +8,6 @@ __pycache__/
 .mypy_cache/
 .pytest_cache/
 .ruff_cache/
+
+# Keep generated export archives out of source control.
+/super-market-api-python.zip
